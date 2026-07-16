@@ -13,4 +13,4 @@ RUN ./mvnw clean package -DskipTests
 
 EXPOSE 8080
 
-CMD ["java","-jar","target/market-intelligence-backend-1.0.0.jar"]
+CMD ["java","-Dspring.profiles.active=prod","-jar","target/management-system-backend-0.0.1-SNAPSHOT.jar"]
