@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FiArrowUpRight, FiBox, FiLoader, FiMapPin, FiRefreshCw, FiSearch, FiTrendingUp } from "react-icons/fi";
+import {
+    FiArrowUpRight,
+    FiGlobe,
+    FiLoader,
+    FiMapPin,
+    FiRefreshCw,
+    FiSearch,
+    FiShoppingCart,
+    FiTrendingUp
+} from "react-icons/fi";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import client from "../../api/axiosClient";
 
@@ -32,7 +41,41 @@ export default function MarketOverview() {
   const [categoryPerformance, setCategoryPerformance] = useState([]), [regionalDemand, setRegionalDemand] = useState([]), [monthlyTrend, setMonthlyTrend] = useState([]), [geography, setGeography] = useState([]);
   const [search, setSearch] = useState(""), [searchResults, setSearchResults] = useState([]), [summary, setSummary] = useState(null), [loading, setLoading] = useState(true), [refreshing, setRefreshing] = useState(false), [error, setError] = useState("");
   const searchTimer = useRef();
-  const metrics = useMemo(() => { const revenue = categoryPerformance.reduce((total, item) => total + Number(item.totalSales || 0), 0), profit = categoryPerformance.reduce((total, item) => total + Number(item.totalProfit || 0), 0), units = categoryPerformance.reduce((total, item) => total + Number(item.totalUnits || 0), 0); return { revenue, profit, units, margin: revenue ? (profit / revenue) * 100 : 0 }; }, [categoryPerformance]);
+  const metrics = useMemo(() => {
+
+    const revenue = categoryPerformance.reduce(
+        (sum, item) => sum + Number(item.totalSales || 0),
+        0
+    );
+
+    const profit = categoryPerformance.reduce(
+        (sum, item) => sum + Number(item.totalProfit || 0),
+        0
+    );
+
+    const orders = geography.length;
+
+    const markets = new Set(
+        geography.map(item => item.market)
+    ).size;
+
+    return {
+
+        revenue,
+
+        profit,
+
+        orders,
+
+        markets,
+
+        margin: revenue
+            ? (profit / revenue) * 100
+            : 0
+
+    };
+
+}, [categoryPerformance, geography]);
   useEffect(() => { loadData(); return () => clearTimeout(searchTimer.current); }, []);
   async function loadData() { setError(""); setRefreshing(true); try { const [category, region, trend, map] = await Promise.all([client.get("/market/category-performance"), client.get("/market/regional-demand"), client.get("/market/monthly-trend"), client.post("/market/geography-demand", {})]); setCategoryPerformance(category.data.data || []); setRegionalDemand(region.data.data || []); setMonthlyTrend(trend.data.data || []); setGeography(map.data.data || []); } catch (err) { console.error("Market analytics request failed", err); setError("We couldn’t load market analytics. Check that the backend is running, then try again."); } finally { setLoading(false); setRefreshing(false); } }
   async function runSearch(keyword) { try { const [searchResponse, mapResponse] = await Promise.all([client.post("/market/search", { keyword }), client.post("/market/geography-demand", { keyword })]); setSummary(searchResponse.data.data.summary); setSearchResults(searchResponse.data.data.results || []); setGeography(mapResponse.data.data || []); } catch (err) { console.error("Market search failed", err); setSummary(null); setSearchResults([]); } }
@@ -42,7 +85,65 @@ export default function MarketOverview() {
     <section className="dashboard-hero"><div className="hero-copy"><div className="eyebrow">Market intelligence</div><h1>Clarity for every <em>commercial move.</em></h1><p>A refined, visual read on performance, demand, and the places your customers are buying.</p></div><div className="hero-stat"><span>Portfolio value</span><strong>{currency(metrics.revenue, true)}</strong><small><FiTrendingUp /> Sales across every market</small></div></section>
     <section className="dashboard-toolbar"><div className="search-wrap"><FiSearch /><input value={search} onChange={handleSearch} placeholder="Search a product, country, customer or category…" aria-label="Search market data" />{search && <button className="clear-search" onClick={() => handleSearch({ target: { value: "" } })}>Clear</button>}</div><button className="refresh-button" onClick={loadData} disabled={refreshing}><FiRefreshCw className={refreshing ? "spin" : ""} /> {refreshing ? "Refreshing" : "Refresh"}</button></section>
     {error && <div className="dashboard-error">{error}<button onClick={loadData}>Try again</button></div>}
-    <section className="metric-grid"><article className="metric-card"><span className="metric-icon purple"><FiTrendingUp /></span><div><p>Total revenue</p><h2>{currency(metrics.revenue, true)}</h2><small>Across all categories</small></div></article><article className="metric-card"><span className="metric-icon gold"><FiArrowUpRight /></span><div><p>Net profit</p><h2>{currency(metrics.profit, true)}</h2><small>{metrics.margin.toFixed(1)}% portfolio margin</small></div></article><article className="metric-card"><span className="metric-icon blue"><FiBox /></span><div><p>Units sold</p><h2>{number(metrics.units)}</h2><small>Items moving worldwide</small></div></article></section>
+    <section className="metric-grid">
+
+    <article className="metric-card">
+
+        <span className="metric-icon purple">
+            <FiTrendingUp />
+        </span>
+
+        <div>
+            <p>Global Revenue</p>
+            <h2>{currency(metrics.revenue, true)}</h2>
+            <small>Across all categories</small>
+        </div>
+
+    </article>
+
+    <article className="metric-card">
+
+        <span className="metric-icon gold">
+            <FiArrowUpRight />
+        </span>
+
+        <div>
+            <p>Net Profit</p>
+            <h2>{currency(metrics.profit, true)}</h2>
+            <small>{metrics.margin.toFixed(1)}% profit margin</small>
+        </div>
+
+    </article>
+
+    <article className="metric-card">
+
+        <span className="metric-icon blue">
+            <FiGlobe />
+        </span>
+
+        <div>
+            <p>Markets Covered</p>
+            <h2>{metrics.markets}</h2>
+            <small>Worldwide market presence</small>
+        </div>
+
+    </article>
+
+    <article className="metric-card">
+
+        <span className="metric-icon green">
+            <FiShoppingCart />
+        </span>
+
+        <div>
+            <p>Regions Analysed</p>
+            <h2>{metrics.orders}</h2>
+            <small>Business regions tracked</small>
+        </div>
+
+    </article>
+
+</section>
     {summary && <section className="search-summary"><div><span>Search intelligence</span><h2>{summary.totalRecords.toLocaleString()} matching records</h2></div><div><span>Search sales</span><strong>{currency(summary.totalSales, true)}</strong></div><div><span>Search profit</span><strong>{currency(summary.totalProfit, true)}</strong></div></section>}
     <section className="map-panel"><div className="panel-heading"><div><span>Demand geography</span><h2>{search ? `Where “${search}” sells` : "Sales concentration around the world"}</h2></div><p>The brightest points represent the highest sales density.</p></div><DemandMap data={geography} query={search.trim()} /></section>
     <section className="chart-grid compact-bars"><article className="panel"><div className="panel-heading"><div><span>Portfolio composition</span><h2>Category sales</h2></div><p>Revenue by category</p></div><div className="category-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={categoryPerformance} barCategoryGap="34%" margin={{ top: 12, right: 8, left: -20, bottom: 0 }}><CartesianGrid vertical={false} stroke="#ebe9e4" /><XAxis dataKey="category" tickLine={false} axisLine={false} tick={{ fill: "#655f76", fontSize: 11 }} /><YAxis tickFormatter={(value) => currency(value, true)} tickLine={false} axisLine={false} tick={{ fill: "#938e89", fontSize: 10 }} /><Tooltip content={<ChartTooltip />} /><Bar dataKey="totalSales" fill="#7255d8" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div></article><article className="panel"><div className="panel-heading"><div><span>Regional demand</span><h2>Region-wise sales</h2></div><p>Revenue by region</p></div><div className="category-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={regionalDemand} barCategoryGap="18%" margin={{ top: 12, right: 8, left: -20, bottom: 0 }}><CartesianGrid vertical={false} stroke="#ebe9e4" /><XAxis dataKey="region" tickLine={false} axisLine={false} tick={{ fill: "#655f76", fontSize: 10 }} /><YAxis tickFormatter={(value) => currency(value, true)} tickLine={false} axisLine={false} tick={{ fill: "#938e89", fontSize: 10 }} /><Tooltip content={<ChartTooltip />} /><Bar dataKey="totalSales" fill="#d39b4a" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div></article></section>

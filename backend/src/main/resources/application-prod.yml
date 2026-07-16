@@ -1,17 +1,39 @@
 spring:
+
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+
+    url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres?sslmode=require
+
+    username:{DB_USERNAME} 
+
+    password: {DB_PASSWORD} 
+
     driver-class-name: org.postgresql.Driver
 
+
+
   jpa:
+
     database-platform: org.hibernate.dialect.PostgreSQLDialect
+
     show-sql: false
 
+
+
   flyway:
+
     enabled: true
+
     locations: classpath:db/market-migration
 
+
+
 server:
-  port: ${PORT:8080}
+
+  port: 8080
+
+
+
+app:
+
+  cors-allowed-origins: http://localhost:5173
